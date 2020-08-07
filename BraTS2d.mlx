@@ -1,0 +1,116 @@
+%fresh start
+clc
+clear all
+close all
+
+
+% brats training and validation dataset locations
+trImLoc = fullfile('/tmp/BraTS/preprocessedDataset/imagesTr');
+valImLoc = fullfile('/tmp/BraTS/preprocessedDataset/imagesVal');
+
+TrLblLoc = fullfile('/tmp/BraTS/preprocessedDataset/labelsTr');
+valLblLoc = fullfile('/tmp/BraTS/preprocessedDataset/labelsVal');
+
+% create directories for 2d images and labels
+mkdir('/tmp/BraTS/2dTrImages');
+mkdir('/tmp/BraTS/2dTrLabels');
+mkdir('/tmp/BraTS/2dValImages');
+mkdir('/tmp/BraTS/2dValLabels');
+
+% name new directories
+Tr2dImLoc = fullfile('/tmp/BraTS/2dTrImages');
+Tr2dlblLoc = fullfile('/tmp/BraTS/2dTrLabels');
+val2dImLoc = fullfile('/tmp/BraTS/2dValImages');
+val2dLblLoc = fullfile('/tmp/BraTS/2dValLabels');
+
+% training set: make a loop to read in all .mat files and convert to slices
+trainImset = dir(trImLoc);
+trainLblset = dir(TrLblLoc);
+numFiles = length(trainImset);
+trainImTable = struct2table(trainImset);
+trainLblTable = struct2table(trainLblset);
+
+for id = 1:400
+    mkdir(fullfile(Tr2dImLoc,num2str(id)));
+    ImLoc2d = fullfile(Tr2dImLoc, num2str(id));
+    voldestcell = fullfile(trImLoc, trainImTable{id+2,"name"});
+    voldest = cell2mat(voldestcell);
+    imLoad = load(voldest);
+    imVol = imLoad.cropVol;
+    images4d2file(imVol, ImLoc2d, id);
+    
+    mkdir(fullfile(Tr2dlblLoc, num2str(id)));
+    lblLoc2 = fullfile(Tr2dlblLoc, num2str(id));
+    lbldestcell = fullfile(TrLblLoc, trainLblTable{id+2, "name"});
+    lbldest = cell2mat(lbldestcell);
+    lblLoad = load(lbldest);
+    lblVol = lblLoad.cropLabel;
+    labels4d2file(lblVol, lblLoc2, id);
+end
+
+
+% validation set: make a loop to read in all.mat files and convert to slices
+valImset = dir(valImLoc);
+valLblset = dir(valLblLoc);
+valImTable = struct2table(valImset);
+valLblTable = struct2table(valLblset);
+numFiles = length(valImset)-2;
+
+for id = 1:numFiles
+    mkdir(fullfile(val2dImLoc,num2str(id)));
+    valIm2 = fullfile(val2dImLoc, num2str(id));
+    voldestcell = fullfile(valImLoc, valImTable{id+2, "name"});
+    voldest = cell2mat(voldestcell);
+    imLoad = load(voldest);
+    imVol = imLoad.cropVol;
+    images4d2file(imVol, valIm2, id);
+    
+    mkdir(fullfile(val2dLblLoc,num2str(id)));
+    valLbl2 = fullfile(val2dLblLoc, num2str(id));
+    lbldestcell = fullfile(valLblLoc, valLblTable{id+2, "name"});
+    lbldest = cell2mat(lbldestcell);
+    lblLoad = load(lbldest);
+    lblVol = lblLoad.cropLabel;
+    labels4d2file(lblVol, valLbl2, id);
+    
+end
+
+
+% store slice locations for training set in cell array
+numFiles = length(trainImset) - 2;
+TrImDir2d = {};
+TrlblDir2d = {};
+
+for id = 1:numFiles
+    idChar = num2str(id);
+    TrImDir2d{id} = [Tr2dImLoc '/' idChar];
+    TrlblDir2d{id} = [Tr2dlblLoc '/' idChar];
+end
+
+% store slice locations for validation set in cell array
+numFiles = length(valImset)-2;
+valImDir2d = {};
+vallblDir2d = {};
+
+for id = 1:numFiles
+    idChar = num2str(id);
+    valImDir2d{id} = [val2dImLoc '/' idChar];
+    vallblDir2d{id} = [val2dLblLoc '/' idChar];
+end
+
+%% store images in imagedastore and pixellabeldatastore
+procvolReader = @(x) matRead(x);
+
+% training datastores
+trimds = imageDatastore(TrImDir2d,'FileExtensions','.mat', 'ReadFcn',procvolReader);
+classnames = ["background" "tumour"];
+pixelLabelID = [0 1];
+trlblds = pixelLabelDatastore(TrlblDir2d, classnames, pixelLabelID, 'FileExtensions','.mat', 'ReadFcn',procvolReader);
+
+% validation datastores
+valimds = imageDatastore(valImDir2d, 'FileExtensions','.mat', 'ReadFcn', procvolReader);
+vallblds = pixelLabelDatastore(vallblDir2d, classnames, pixelLabelID,'FileExtensions','.mat', 'ReadFcn',procvolReader);
+
+% make pixelLabelImageDatastores 
+trpximds = pixelLabelImageDatastore(trimds,trlblds);
+valpximds = pixelLabelImageDatastore(valimds, vallblds);
