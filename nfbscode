@@ -321,7 +321,9 @@ options = trainingOptions('adam', ...
 
     modelDateTime = datestr(now,'dd-mmm-yyyy-HH-MM-SS');
     [net,info] = trainNetwork(trpatchds,lgraph,options);
-    save(['trained3DUNet-' modelDateTime '-Epoch-' num2str(maxEpochs) '.mat'],'net');
+    save(['trained3DUNet-' modelDateTime '-Epoch-' num2str(options.MaxEpochs) '.mat'],'net');
+    infotable = struct2table(info);
+    writetable(infotable, ['2DUNetinfo-' modelDateTime '-Epoch-' num2str(options.MaxEpochs) '.txt']);
 
 end
 
