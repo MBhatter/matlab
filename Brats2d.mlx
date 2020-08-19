@@ -1,0 +1,70 @@
+%fresh start
+clc
+clear all
+close all
+
+gpuDevice(1);
+
+
+% brats training and validation dataset locations
+trImLoc = fullfile('/tmp/BraTS/preprocessedDataset/imagesTr');
+valImLoc = fullfile('/tmp/BraTS/preprocessedDataset/imagesVal');
+
+TrLblLoc = fullfile('/tmp/BraTS/preprocessedDataset/labelsTr');
+valLblLoc = fullfile('/tmp/BraTS/preprocessedDataset/labelsVal');
+
+% create directories for 2d images and labels
+mkdir('/tmp/BraTS/2dTrImages');
+mkdir('/tmp/BraTS/2dTrLabels');
+mkdir('/tmp/BraTS/2dValImages');
+mkdir('/tmp/BraTS/2dValLabels');
+
+% name new directories
+Tr2dImLoc = fullfile('/tmp/BraTS/2dTrImages');
+Tr2dlblLoc = fullfile('/tmp/BraTS/2dTrLabels');
+val2dImLoc = fullfile('/tmp/BraTS/2dValImages');
+val2dLblLoc = fullfile('/tmp/BraTS/2dValLabels');
+
+% training set: make a loop to read in all .mat files and convert to slices
+trainImset = dir(trImLoc);
+trainLblset = dir(TrLblLoc);
+numFiles = length(trainImset);
+trainImTable = struct2table(trainImset);
+trainLblTable = struct2table(trainLblset);
+
+% declare cell arrays to store slice data
+trImCell = {};
+trLblCell = {};
+
+numIm = 1;
+numLbl = 1;
+
+for id = 1:400
+    
+    %load image
+    voldestcell = fullfile(trImLoc, trainImTable{id+2,"name"});
+    voldest = cell2mat(voldestcell);
+    imLoad = load(voldest);
+    imVol = imLoad.cropVol;
+    
+    %do the slicing, return cell array
+    inCell = images4d2store(imVol);
+    
+    % go through cell array, store each image data in new cell array
+    for im = 1:numel(inCell)
+        trImCell{numIm} = inCell{im};
+        numIm = numIm + 1;
+    end
+    
+    lbldestcell = fullfile(TrLblLoc, trainLblTable{id+2, "name"});
+    lbldest = cell2mat(lbldestcell);
+    lblLoad = load(lbldest);
+    lblVol = lblLoad.cropLabel;
+    inCell = labels4d2store(lblVol);
+    
+    for im = 1:numel(inCell)
+        trLblCell{numLbl} = inCell{im};
+        numLbl = numLbl + 1;
+    end
+    
+end
